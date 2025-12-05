@@ -48,3 +48,19 @@ colorama>=0.4.6
 fastapi>=0.100.0
 uvicorn>=0.23.0
 pydantic>=2.0.0
+flask>=3.0.0
+flask-cors>=4.0.0
+
+# ==============================================================================
+# ENTERPRISE SECURITY FEATURES
+# ==============================================================================
+
+# Authentication & Authorization
+python-jose[cryptography]>=3.3.0  # Auth0 JWT validation
+cryptography>=42.0.0  # Encryption at rest
+
+# SAML SSO (Optional - for Enterprise SSO)
+python3-saml>=1.16.0  # Google Workspace, Microsoft 365, Okta integration
+
+# HTTP Requests
+requests>=2.31.0  # For SAML, SCIM, external APIs
