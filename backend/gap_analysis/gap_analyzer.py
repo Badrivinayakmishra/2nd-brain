@@ -1,13 +1,14 @@
 """
 Gap Analysis Engine
 Analyzes clustered data to identify missing information and knowledge gaps
-SECURITY: All data sanitized before sending to OpenAI
+SECURITY: All data sanitized before sending to Azure OpenAI
 """
 
 import json
+import os
 from pathlib import Path
 from typing import Dict, List, Set
-from openai import OpenAI
+from openai import AzureOpenAI
 from collections import defaultdict
 import re
 
@@ -18,20 +19,40 @@ from security.data_sanitizer import DataSanitizer
 class GapAnalyzer:
     """Analyze projects for knowledge gaps and missing information"""
 
-    def __init__(self, api_key: str, model: str = "gpt-4o-mini"):
+    def __init__(
+        self,
+        api_key: str = None,
+        endpoint: str = None,
+        deployment: str = None,
+        api_version: str = "2024-02-15-preview"
+    ):
         """
-        Initialize gap analyzer
+        Initialize gap analyzer with Azure OpenAI
 
         Args:
-            api_key: OpenAI API key
-            model: Model to use for analysis
+            api_key: Azure OpenAI API key (or from env AZURE_OPENAI_API_KEY)
+            endpoint: Azure OpenAI endpoint (or from env AZURE_OPENAI_ENDPOINT)
+            deployment: Azure deployment name (or from env AZURE_OPENAI_DEPLOYMENT)
+            api_version: Azure API version
         """
-        self.client = OpenAI(api_key=api_key)
-        self.model = model
+        # Load from environment if not provided
+        self.api_key = api_key or os.getenv('AZURE_OPENAI_API_KEY')
+        self.endpoint = endpoint or os.getenv('AZURE_OPENAI_ENDPOINT')
+        self.deployment = deployment or os.getenv('AZURE_OPENAI_DEPLOYMENT')
+        self.api_version = api_version
+
+        # Initialize Azure OpenAI client
+        self.client = AzureOpenAI(
+            api_key=self.api_key,
+            api_version=self.api_version,
+            azure_endpoint=self.endpoint
+        )
         self.gap_results = {}
 
         # SECURITY: Initialize data sanitizer
         self.sanitizer = DataSanitizer(max_length=2000)
+
+        print(f"✓ Initialized Azure OpenAI gap analyzer (deployment: {self.deployment})")
 
     def analyze_project_gaps(self, project_data: Dict) -> Dict:
         """
@@ -163,7 +184,7 @@ class GapAnalyzer:
 
         try:
             response = self.client.chat.completions.create(
-                model=self.model,
+                model=self.deployment,  # Azure uses deployment name
                 messages=[
                     {
                         "role": "system",

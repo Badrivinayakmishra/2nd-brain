@@ -1,13 +1,14 @@
 """
 Hierarchical RAG (Retrieval-Augmented Generation) Engine
 Combines Knowledge Graph and Vector Database for intelligent querying
-SECURITY: All queries and data sanitized before sending to OpenAI
+SECURITY: All queries and data sanitized before sending to Azure OpenAI
 """
 
 import json
+import os
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
-from openai import OpenAI
+from openai import AzureOpenAI
 import re
 
 # SECURITY: Import data sanitizer
@@ -22,26 +23,44 @@ class HierarchicalRAG:
         vector_db,
         knowledge_graph=None,
         api_key: str = None,
-        model: str = "gpt-4o-mini"
+        endpoint: str = None,
+        deployment: str = None,
+        api_version: str = "2024-02-15-preview"
     ):
         """
-        Initialize Hierarchical RAG
+        Initialize Hierarchical RAG with Azure OpenAI
 
         Args:
             vector_db: VectorDatabaseBuilder instance
             knowledge_graph: KnowledgeGraphBuilder instance (optional)
-            api_key: OpenAI API key
-            model: LLM model to use
+            api_key: Azure OpenAI API key (or from env AZURE_OPENAI_API_KEY)
+            endpoint: Azure OpenAI endpoint (or from env AZURE_OPENAI_ENDPOINT)
+            deployment: Azure deployment name (or from env AZURE_OPENAI_DEPLOYMENT)
+            api_version: Azure API version
         """
         self.vector_db = vector_db
         self.knowledge_graph = knowledge_graph
-        self.client = OpenAI(api_key=api_key) if api_key else None
-        self.model = model
+
+        # Load Azure credentials from environment if not provided
+        if api_key or os.getenv('AZURE_OPENAI_API_KEY'):
+            self.api_key = api_key or os.getenv('AZURE_OPENAI_API_KEY')
+            self.endpoint = endpoint or os.getenv('AZURE_OPENAI_ENDPOINT')
+            self.deployment = deployment or os.getenv('AZURE_OPENAI_DEPLOYMENT')
+            self.api_version = api_version
+
+            self.client = AzureOpenAI(
+                api_key=self.api_key,
+                api_version=self.api_version,
+                azure_endpoint=self.endpoint
+            )
+        else:
+            self.client = None
+            self.deployment = None
 
         # SECURITY: Initialize data sanitizer
         self.sanitizer = DataSanitizer(max_length=500)  # Shorter for queries
 
-        print("✓ Hierarchical RAG initialized")
+        print(f"✓ Hierarchical RAG initialized (Azure deployment: {self.deployment})")
 
     def extract_entities(self, query: str) -> Dict[str, List[str]]:
         """
@@ -78,7 +97,7 @@ Provide response as JSON:
 
         try:
             response = self.client.chat.completions.create(
-                model=self.model,
+                model=self.deployment,  # Azure uses deployment name
                 messages=[
                     {
                         "role": "system",
@@ -323,7 +342,7 @@ Please provide a detailed answer with citations:"""
             # Generate response
             print("  Generating response...")
             response = self.client.chat.completions.create(
-                model=self.model,
+                model=self.deployment,  # Azure uses deployment name
                 messages=[
                     {
                         "role": "system",

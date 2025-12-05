@@ -1,13 +1,14 @@
 """
 Work vs Personal Content Classifier
-Uses GPT-4o-mini to classify documents as work-related or personal
-SECURITY: All data sanitized before sending to OpenAI
+Uses Azure OpenAI (GPT-5) to classify documents as work-related or personal
+SECURITY: All data sanitized before sending to Azure OpenAI
 """
 
 import json
+import os
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
-from openai import OpenAI
+from openai import AzureOpenAI
 from tqdm import tqdm
 import time
 from collections import defaultdict
@@ -19,20 +20,40 @@ from security.data_sanitizer import DataSanitizer
 class WorkPersonalClassifier:
     """Classifier to distinguish work-related from personal content"""
 
-    def __init__(self, api_key: str, model: str = "gpt-4o-mini"):
+    def __init__(
+        self,
+        api_key: str = None,
+        endpoint: str = None,
+        deployment: str = None,
+        api_version: str = "2024-02-15-preview"
+    ):
         """
-        Initialize classifier
+        Initialize classifier with Azure OpenAI
 
         Args:
-            api_key: OpenAI API key
-            model: Model to use for classification
+            api_key: Azure OpenAI API key (or from env AZURE_OPENAI_API_KEY)
+            endpoint: Azure OpenAI endpoint (or from env AZURE_OPENAI_ENDPOINT)
+            deployment: Azure deployment name (or from env AZURE_OPENAI_DEPLOYMENT)
+            api_version: Azure API version
         """
-        self.client = OpenAI(api_key=api_key)
-        self.model = model
+        # Load from environment if not provided
+        self.api_key = api_key or os.getenv('AZURE_OPENAI_API_KEY')
+        self.endpoint = endpoint or os.getenv('AZURE_OPENAI_ENDPOINT')
+        self.deployment = deployment or os.getenv('AZURE_OPENAI_DEPLOYMENT')
+        self.api_version = api_version
+
+        # Initialize Azure OpenAI client
+        self.client = AzureOpenAI(
+            api_key=self.api_key,
+            api_version=self.api_version,
+            azure_endpoint=self.endpoint
+        )
         self.classification_results = []
 
         # SECURITY: Initialize data sanitizer
         self.sanitizer = DataSanitizer(max_length=1000)
+
+        print(f"✓ Initialized Azure OpenAI classifier (deployment: {self.deployment})")
 
     def classify_document(self, document: Dict) -> Dict:
         """
@@ -55,9 +76,9 @@ class WorkPersonalClassifier:
         prompt = self._create_classification_prompt(sanitized_subject, sanitized_content)
 
         try:
-            # Call GPT-4o-mini for classification
+            # Call Azure OpenAI for classification
             response = self.client.chat.completions.create(
-                model=self.model,
+                model=self.deployment,  # Azure uses deployment name
                 messages=[
                     {
                         "role": "system",
@@ -290,7 +311,9 @@ Be conservative - when in doubt, classify as work if it could reasonably be work
 def classify_project_documents(
     project_dir: str,
     output_dir: str,
-    api_key: str,
+    api_key: str = None,
+    endpoint: str = None,
+    deployment: str = None,
     sample_size: Optional[int] = None
 ) -> WorkPersonalClassifier:
     """
@@ -299,13 +322,19 @@ def classify_project_documents(
     Args:
         project_dir: Directory containing project documents
         output_dir: Directory to save classified documents
-        api_key: OpenAI API key
+        api_key: Azure OpenAI API key (optional, uses env)
+        endpoint: Azure OpenAI endpoint (optional, uses env)
+        deployment: Azure deployment name (optional, uses env)
         sample_size: Optional limit for testing
 
     Returns:
         WorkPersonalClassifier instance with results
     """
-    classifier = WorkPersonalClassifier(api_key)
+    classifier = WorkPersonalClassifier(
+        api_key=api_key,
+        endpoint=endpoint,
+        deployment=deployment
+    )
 
     # Load documents
     documents = []
