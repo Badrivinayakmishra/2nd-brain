@@ -1,6 +1,7 @@
 """
 Hierarchical RAG (Retrieval-Augmented Generation) Engine
 Combines Knowledge Graph and Vector Database for intelligent querying
+SECURITY: All queries and data sanitized before sending to OpenAI
 """
 
 import json
@@ -8,6 +9,9 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from openai import OpenAI
 import re
+
+# SECURITY: Import data sanitizer
+from security.data_sanitizer import DataSanitizer
 
 
 class HierarchicalRAG:
@@ -34,6 +38,9 @@ class HierarchicalRAG:
         self.client = OpenAI(api_key=api_key) if api_key else None
         self.model = model
 
+        # SECURITY: Initialize data sanitizer
+        self.sanitizer = DataSanitizer(max_length=500)  # Shorter for queries
+
         print("✓ Hierarchical RAG initialized")
 
     def extract_entities(self, query: str) -> Dict[str, List[str]]:
@@ -50,13 +57,16 @@ class HierarchicalRAG:
             # Fallback to simple keyword extraction
             return self._simple_entity_extraction(query)
 
+        # SECURITY: Sanitize query before sending to OpenAI
+        sanitized_query = self.sanitizer.sanitize_text(query, truncate=True)
+
         prompt = f"""Extract entities from the following query. Identify:
 - employees: Names or email addresses of people
 - projects: Project names or identifiers
 - topics: Main topics or keywords
 - time_references: Time periods or dates mentioned
 
-Query: {query}
+Query: {sanitized_query}
 
 Provide response as JSON:
 {{

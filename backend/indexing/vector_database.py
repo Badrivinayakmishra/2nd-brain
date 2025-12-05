@@ -1,6 +1,7 @@
 """
 Vector Database using ChromaDB
 Creates and manages vector embeddings for semantic search
+SECURITY: Multi-tenant isolation - each organization gets separate collection
 """
 
 import json
@@ -23,7 +24,8 @@ class VectorDatabaseBuilder:
         collection_name: str = "knowledgevault",
         embedding_model: str = "sentence-transformers/all-mpnet-base-v2",
         use_openai_embeddings: bool = False,
-        openai_api_key: Optional[str] = None
+        openai_api_key: Optional[str] = None,
+        organization_id: Optional[str] = None  # SECURITY: Organization isolation
     ):
         """
         Initialize ChromaDB vector database
@@ -34,9 +36,13 @@ class VectorDatabaseBuilder:
             embedding_model: Model for embeddings
             use_openai_embeddings: Whether to use OpenAI embeddings
             openai_api_key: OpenAI API key if using OpenAI embeddings
+            organization_id: Organization ID for multi-tenant isolation
         """
         self.persist_dir = Path(persist_directory)
         self.persist_dir.mkdir(parents=True, exist_ok=True)
+
+        # SECURITY: Store organization ID
+        self.organization_id = organization_id
 
         # Initialize ChromaDB client
         self.client = chromadb.PersistentClient(
@@ -44,7 +50,13 @@ class VectorDatabaseBuilder:
             settings=Settings(anonymized_telemetry=False)
         )
 
-        self.collection_name = collection_name
+        # SECURITY: Append organization ID to collection name for isolation
+        if organization_id:
+            self.collection_name = f"org_{organization_id}_{collection_name}"
+            print(f"🔒 Multi-tenant mode: Collection isolated for org {organization_id}")
+        else:
+            self.collection_name = collection_name
+            print("⚠️  WARNING: No organization_id provided - using shared collection")
         self.use_openai = use_openai_embeddings
 
         # Initialize embedding model

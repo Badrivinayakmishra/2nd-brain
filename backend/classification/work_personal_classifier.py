@@ -1,6 +1,7 @@
 """
 Work vs Personal Content Classifier
 Uses GPT-4o-mini to classify documents as work-related or personal
+SECURITY: All data sanitized before sending to OpenAI
 """
 
 import json
@@ -10,6 +11,9 @@ from openai import OpenAI
 from tqdm import tqdm
 import time
 from collections import defaultdict
+
+# SECURITY: Import data sanitizer
+from security.data_sanitizer import DataSanitizer
 
 
 class WorkPersonalClassifier:
@@ -27,6 +31,9 @@ class WorkPersonalClassifier:
         self.model = model
         self.classification_results = []
 
+        # SECURITY: Initialize data sanitizer
+        self.sanitizer = DataSanitizer(max_length=1000)
+
     def classify_document(self, document: Dict) -> Dict:
         """
         Classify a single document as work or personal
@@ -40,8 +47,12 @@ class WorkPersonalClassifier:
         content = document['content']
         subject = document['metadata'].get('subject', '')
 
-        # Prepare classification prompt
-        prompt = self._create_classification_prompt(subject, content)
+        # SECURITY: Sanitize data before sending to OpenAI
+        sanitized_subject = self.sanitizer.sanitize_text(subject, truncate=False)
+        sanitized_content = self.sanitizer.sanitize_text(content, truncate=True)
+
+        # Prepare classification prompt with SANITIZED data
+        prompt = self._create_classification_prompt(sanitized_subject, sanitized_content)
 
         try:
             # Call GPT-4o-mini for classification

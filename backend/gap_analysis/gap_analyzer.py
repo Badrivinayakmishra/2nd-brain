@@ -1,6 +1,7 @@
 """
 Gap Analysis Engine
 Analyzes clustered data to identify missing information and knowledge gaps
+SECURITY: All data sanitized before sending to OpenAI
 """
 
 import json
@@ -9,6 +10,9 @@ from typing import Dict, List, Set
 from openai import OpenAI
 from collections import defaultdict
 import re
+
+# SECURITY: Import data sanitizer
+from security.data_sanitizer import DataSanitizer
 
 
 class GapAnalyzer:
@@ -25,6 +29,9 @@ class GapAnalyzer:
         self.client = OpenAI(api_key=api_key)
         self.model = model
         self.gap_results = {}
+
+        # SECURITY: Initialize data sanitizer
+        self.sanitizer = DataSanitizer(max_length=2000)
 
     def analyze_project_gaps(self, project_data: Dict) -> Dict:
         """
@@ -148,8 +155,11 @@ class GapAnalyzer:
     ) -> Dict:
         """Use LLM to identify knowledge gaps"""
 
-        # Create analysis prompt
-        prompt = self._create_gap_analysis_prompt(project_name, summary, documents)
+        # SECURITY: Sanitize documents before sending to OpenAI
+        sanitized_documents = self.sanitizer.sanitize_batch(documents)
+
+        # Create analysis prompt with SANITIZED data
+        prompt = self._create_gap_analysis_prompt(project_name, summary, sanitized_documents)
 
         try:
             response = self.client.chat.completions.create(
