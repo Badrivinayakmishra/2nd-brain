@@ -1,6 +1,16 @@
 """
 Input Validation and Sanitization
 Prevents SQL injection, command injection, XSS, and other attacks
+
+⚠️ CRITICAL SECURITY WARNING:
+This validator uses regex blacklisting which CAN BE BYPASSED.
+DO NOT use sanitize_string() for SQL queries!
+
+For database queries, ALWAYS use parameterized queries:
+    ✅ CORRECT: cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+    ❌ WRONG:   cursor.execute(f"SELECT * FROM users WHERE id = {user_id}")
+
+This validator is for display/logging/non-critical validation only.
 """
 
 import re

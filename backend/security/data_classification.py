@@ -152,6 +152,16 @@ class SecureDataDisposal:
 
     SOC 2: CC6.5 - Secure disposal of sensitive data
     NIST 800-88: Guidelines for Media Sanitization
+
+    ⚠️ SSD/CLOUD STORAGE LIMITATION:
+    File overwriting (DoD 5220.22-M) is effective on traditional HDDs.
+    On SSDs, NVMe drives, and cloud storage (AWS EBS/S3), the OS/hypervisor
+    controls block placement due to wear leveling. Overwriting may not
+    destroy the physical data.
+
+    For SSD/Cloud: Use encryption at rest (we do) + deletion is sufficient.
+    Physical destruction of drives is only option for 100% data erasure.
+    This limitation is documented and acceptable for SOC 2 compliance.
     """
 
     @staticmethod

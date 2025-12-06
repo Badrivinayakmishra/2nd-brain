@@ -71,7 +71,7 @@ class EncryptionManager:
             32-byte key for Fernet
         """
         if salt is None:
-            salt = b'knowledgevault_salt_2024'  # Default salt (should be random in production)
+            salt = os.urandom(16)  # Generate random 16-byte salt
 
         kdf = PBKDF2HMAC(
             algorithm=hashes.SHA256(),
