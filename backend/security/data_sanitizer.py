@@ -53,6 +53,14 @@ class DataSanitizer:
             'credit_card': r'\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b',
             'ip_address': r'\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b',
             'url_sensitive': r'https?://[^\s]+(?:password|token|key|secret|api)[^\s]*',
+            # API Keys and Tokens (CRITICAL - prevents credential leakage to LLM)
+            'jwt_token': r'eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}',  # JWT tokens
+            'aws_key': r'(?:A3T[A-Z0-9]|AKIA|AGPA|AIDA|AROA|AIPA|ANPA|ANVA|ASIA)[A-Z0-9]{16}',  # AWS Access Key
+            'aws_secret': r'aws_secret_access_key[\s:=]+["\']?([A-Za-z0-9/+=]{40})["\']?',  # AWS Secret Key
+            'slack_token': r'xox[baprs]-[0-9]{10,13}-[0-9]{10,13}-[A-Za-z0-9]{24,32}',  # Slack tokens
+            'github_token': r'gh[pousr]_[A-Za-z0-9]{36,255}',  # GitHub tokens
+            'generic_api_key': r'(?:api[_-]?key|apikey|access[_-]?token)[\s:=]+["\']?([a-zA-Z0-9_\-]{20,})["\']?',  # Generic API keys
+            'private_key': r'-----BEGIN (?:RSA |EC )?PRIVATE KEY-----',  # Private keys
         }
 
         # Redaction labels
@@ -63,6 +71,13 @@ class DataSanitizer:
             'credit_card': '[CARD_REDACTED]',
             'ip_address': '[IP_REDACTED]',
             'url_sensitive': '[URL_REDACTED]',
+            'jwt_token': '[JWT_TOKEN_REDACTED]',
+            'aws_key': '[AWS_KEY_REDACTED]',
+            'aws_secret': '[AWS_SECRET_REDACTED]',
+            'slack_token': '[SLACK_TOKEN_REDACTED]',
+            'github_token': '[GITHUB_TOKEN_REDACTED]',
+            'generic_api_key': '[API_KEY_REDACTED]',
+            'private_key': '[PRIVATE_KEY_REDACTED]',
         }
 
     def sanitize_text(self, text: str, truncate: bool = True) -> str:
