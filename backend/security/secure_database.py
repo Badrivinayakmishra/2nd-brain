@@ -59,7 +59,14 @@ class SecureDatabase:
         if self._connection is None:
             if self.db_type == 'sqlite':
                 import sqlite3
-                self._connection = sqlite3.connect(self.connection_string)
+                # Parse SQLite connection string (strip sqlite:// or sqlite:/// prefix)
+                db_path = self.connection_string
+                if db_path.startswith('sqlite:///'):
+                    db_path = db_path[10:]  # Remove 'sqlite:///'
+                elif db_path.startswith('sqlite://'):
+                    db_path = db_path[9:]   # Remove 'sqlite://'
+
+                self._connection = sqlite3.connect(db_path)
                 self._connection.row_factory = sqlite3.Row  # Dict-like rows
 
             elif self.db_type == 'postgresql':

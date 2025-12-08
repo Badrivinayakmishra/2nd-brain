@@ -431,17 +431,18 @@ if __name__ == "__main__":
     # Test 1: Key generation
     print("\n1️⃣  Key Generation:")
     key = EncryptionManager.generate_key()
-    print(f"   Generated key: {key[:40]}...")
-    print("   ✅ Save to .env: ENCRYPTION_KEY={key}")
+    print(f"   Generated key: [REDACTED - Length: {len(key)} bytes]")
+    print("   ✅ Key generated successfully - save to .env: ENCRYPTION_KEY=<generated_key>")
+    print("   ⚠️  SECURITY: Never print actual keys to console/logs!")
 
     # Test 2: Password derivation with salt
     print("\n2️⃣  Password Derivation (with salt):")
     password = "MySecurePassword123!"
     derived_key, salt = EncryptionManager.derive_key_from_password(password)
-    print(f"   Password: {password}")
-    print(f"   Derived key: {derived_key[:40]}...")
-    print(f"   Salt: {salt[:40]}...")
-    print("   ⚠️  IMPORTANT: Store BOTH key and salt!")
+    print(f"   Password: [REDACTED]")
+    print(f"   Derived key: [REDACTED - Length: {len(derived_key)} bytes]")
+    print(f"   Salt: [REDACTED - Length: {len(salt)} bytes]")
+    print("   ⚠️  IMPORTANT: Store BOTH key and salt securely!")
 
     # Test 3: Derive same key with salt
     print("\n3️⃣  Derive Same Key (using stored salt):")
@@ -454,8 +455,8 @@ if __name__ == "__main__":
     print("\n4️⃣  Different Salt = Different Key:")
     key2, salt2 = EncryptionManager.derive_key_from_password(password)
     print(f"   Same password, different salt")
-    print(f"   Key 1: {derived_key[:40]}...")
-    print(f"   Key 2: {key2[:40]}...")
+    print(f"   Key 1: [REDACTED]")
+    print(f"   Key 2: [REDACTED]")
     print(f"   Keys different? {derived_key != key2}")
     assert derived_key != key2, "❌ Keys should be different with different salts!"
     print("   ✅ Random salts working correctly!")

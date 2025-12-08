@@ -9,6 +9,9 @@ CRITICAL SECURITY IMPROVEMENTS:
 ✅ Prevents algorithm confusion attacks
 ✅ MFA enforcement
 ✅ Token age limits
+✅ SECURITY FIX (2025-12-08): Explicit alg:none rejection
+✅ SECURITY FIX (2025-12-08): kid validation
+✅ SECURITY FIX (2025-12-08): Token hashing before blacklist
 
 WHY PyJWT vs python-jose:
 - PyJWT is more actively maintained
@@ -19,6 +22,7 @@ WHY PyJWT vs python-jose:
 
 import os
 import time
+import hashlib
 import requests
 from typing import Optional, Dict, List
 from dataclasses import dataclass
@@ -127,8 +131,31 @@ class JWTValidator:
         6. Algorithm whitelist (only RS256/ES256)
         7. Token age limit
         8. MFA validation (if required)
+        9. SECURITY FIX: Explicit alg:none rejection
+        10. SECURITY FIX: kid validation
         """
         try:
+            # SECURITY FIX 1: Explicit alg:none rejection
+            # Decode header without verification to check algorithm
+            unverified_header = jwt.get_unverified_header(token)
+
+            alg = unverified_header.get('alg', '').lower()
+            if alg == 'none' or alg == '':
+                print("❌ JWT REJECTED: alg:none or empty algorithm not allowed")
+                raise InvalidTokenError("alg:none is not allowed")
+
+            # SECURITY FIX 2: kid validation
+            # Ensure kid (key ID) is present in header
+            kid = unverified_header.get('kid')
+            if not kid:
+                print("❌ JWT REJECTED: Missing kid (key ID) in JWT header")
+                raise InvalidTokenError("kid missing from JWT header")
+
+            # Validate algorithm is in whitelist
+            if alg.upper() not in [a.upper() for a in self.config.algorithms]:
+                print(f"❌ JWT REJECTED: Algorithm {alg} not in whitelist {self.config.algorithms}")
+                raise InvalidTokenError(f"Algorithm {alg} not allowed")
+
             # Get signing key from JWKS (auto-rotated)
             signing_key = self.jwks_client.get_signing_key_from_jwt(token)
 
@@ -229,6 +256,26 @@ class JWTValidator:
             return True
 
         return False
+
+    @staticmethod
+    def hash_token(token: str) -> str:
+        """
+        Hash token for privacy-preserving storage in blacklist
+
+        SECURITY FIX (2025-12-08): Tokens should be hashed before storing in blacklist
+        to prevent exposure if blacklist storage is compromised.
+
+        Usage:
+            token_hash = JWTValidator.hash_token(token)
+            jwt_blacklist_manager.revoke_token(token_hash)
+
+        Args:
+            token: JWT token string
+
+        Returns:
+            SHA-256 hash of token (hex string)
+        """
+        return hashlib.sha256(token.encode('utf-8')).hexdigest()
 
     def decode_unverified(self, token: str) -> Optional[Dict]:
         """
