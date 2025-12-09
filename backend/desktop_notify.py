@@ -66,6 +66,11 @@ def notify_linux(title, message, urgent=False):
 def notify_windows(title, message, urgent=False):
     """Send notification on Windows using PowerShell"""
     try:
+        # SECURITY FIX: Escape XML special characters to prevent injection
+        import xml.sax.saxutils
+        title_escaped = xml.sax.saxutils.escape(title)
+        message_escaped = xml.sax.saxutils.escape(message)
+
         # Windows 10+ Toast notification
         script = f"""
 [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
@@ -76,8 +81,8 @@ $template = @"
 <toast>
     <visual>
         <binding template="ToastText02">
-            <text id="1">{title}</text>
-            <text id="2">{message}</text>
+            <text id="1">{title_escaped}</text>
+            <text id="2">{message_escaped}</text>
         </binding>
     </visual>
 </toast>

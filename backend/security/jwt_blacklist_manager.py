@@ -329,14 +329,20 @@ class JWTBlacklistManager:
         sessions_with_ttl.sort(key=lambda x: x[1])
 
         # Blacklist oldest sessions
+        # SECURITY FIX: Directly blacklist by hash since we don't have original token
         excess_count = len(active_sessions) - self.config.max_concurrent_sessions
         for session_key, ttl in sessions_with_ttl[:excess_count]:
             token_hash = session_key.split(":")[-1]
-            self.blacklist_token(
-                token_hash,
-                user_id,
-                reason="session_limit_exceeded"
-            )
+            if ttl > 0:
+                blacklist_key = f"jwt:blacklist:{token_hash}"
+                entry = json.dumps({
+                    "user_id": user_id,
+                    "reason": "session_limit_exceeded",
+                    "blacklisted_at": time.time()
+                })
+                self._redis_client.setex(blacklist_key, ttl, entry)
+                # Remove from active sessions
+                self._redis_client.delete(session_key)
 
     def get_user_active_sessions(self, user_id: str) -> int:
         """

@@ -60,7 +60,8 @@ class DataSanitizer:
             'slack_token': r'xox[baprs]-[0-9]{10,13}-[0-9]{10,13}-[A-Za-z0-9]{24,32}',  # Slack tokens
             'github_token': r'gh[pousr]_[A-Za-z0-9]{36,255}',  # GitHub tokens
             'generic_api_key': r'(?:api[_-]?key|apikey|access[_-]?token)[\s:=]+["\']?([a-zA-Z0-9_\-]{20,})["\']?',  # Generic API keys
-            'private_key': r'-----BEGIN (?:RSA |EC )?PRIVATE KEY-----',  # Private keys
+            # SECURITY FIX: Match entire PEM block including key body and END line
+            'private_key': r'(?s)-----BEGIN (?:RSA |EC )?PRIVATE KEY-----.*?-----END (?:RSA |EC )?PRIVATE KEY-----',  # Private keys
         }
 
         # Redaction labels

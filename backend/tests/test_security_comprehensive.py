@@ -104,7 +104,8 @@ class TestSQLInjectionPrevention(unittest.TestCase):
         )
 
         self.assertEqual(len(result), 1, "Legitimate query failed!")
-        self.assertEqual(result[0][1], 'test@example.com')
+        # SECURITY FIX: execute_query returns dictionaries, not tuples
+        self.assertEqual(result[0]['email'], 'test@example.com')
 
 
 class TestEncryptionSecurity(unittest.TestCase):
