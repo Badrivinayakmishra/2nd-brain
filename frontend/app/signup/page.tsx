@@ -41,7 +41,7 @@ export default function SignupPage() {
 
     // Redirect based on user type
     if (userType === 'professor') {
-      router.push('/create-lab')
+      router.push('/professor/dashboard')
     } else {
       router.push('/student/dashboard')
     }

@@ -26,7 +26,7 @@ export default function Login() {
 
     // Redirect based on user type to the correct dashboard
     if (userType === 'professor') {
-      router.push('/create-lab')
+      router.push('/professor/dashboard')
     } else {
       // IMPORTANT: Redirect students to the new gray/white student dashboard
       router.push('/student/dashboard')
