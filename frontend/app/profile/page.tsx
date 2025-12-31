@@ -7,6 +7,7 @@ export default function ProfilePage() {
   const router = useRouter()
   const [isEditing, setIsEditing] = useState(false)
   const [showSuccessMessage, setShowSuccessMessage] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
 
   // Profile state
   const [fullName, setFullName] = useState('Jane Doe')
@@ -27,12 +28,14 @@ export default function ProfilePage() {
     if (file) {
       // Check file type
       if (!file.name.endsWith('.pdf')) {
-        alert('Please upload a PDF file')
+        setErrorMessage('Please upload a PDF file')
+        setTimeout(() => setErrorMessage(''), 3000)
         return
       }
       // Check file size (5MB limit)
       if (file.size > 5 * 1024 * 1024) {
-        alert('File size must be less than 5MB')
+        setErrorMessage('File size must be less than 5MB')
+        setTimeout(() => setErrorMessage(''), 3000)
         return
       }
       if (type === 'resume') {
@@ -95,6 +98,28 @@ export default function ProfilePage() {
           }}
         >
           Profile updated successfully!
+        </div>
+      )}
+
+      {/* Error Message */}
+      {errorMessage && (
+        <div
+          style={{
+            position: 'fixed',
+            top: '24px',
+            right: '24px',
+            backgroundColor: '#EF4444',
+            color: '#FFFFFF',
+            padding: '16px 24px',
+            borderRadius: '8px',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+            zIndex: 2000,
+            fontFamily: '"Work Sans", sans-serif',
+            fontSize: '15px',
+            fontWeight: 500
+          }}
+        >
+          {errorMessage}
         </div>
       )}
 
