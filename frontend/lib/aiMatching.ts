@@ -188,14 +188,60 @@ function calculateCoverLetterScore(coverLetter: string, labTitle: string): numbe
 }
 
 /**
- * Generate AI match score using Claude API (for production)
- * This requires backend API integration
+ * Generate AI match score using backend Python algorithm
+ * Calls the Render backend API with sophisticated matching
  */
 export async function generateAIMatchScore(
   student: StudentProfile,
   lab: LabRequirements
 ): Promise<MatchResult> {
-  // TODO: Implement Claude API integration
-  // For now, use the simple algorithm
-  return calculateMatchScore(student, lab)
+  try {
+    // Get backend URL from environment or use default
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://catalyst-research-backend.onrender.com'
+
+    const response = await fetch(`${backendUrl}/api/ai/match-score`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        student: {
+          studentName: student.major, // Will be replaced with actual name when available
+          email: '', // Will be filled from auth context
+          major: student.major,
+          gpa: student.gpa,
+          skills: student.skills,
+          coverLetter: student.coverLetter || '',
+          graduationDate: student.graduationDate || ''
+        },
+        lab: {
+          name: lab.title,
+          department: lab.department,
+          description: lab.description || '',
+          requirements: lab.requiredSkills?.join(', ') || '',
+          research_areas: lab.description || ''
+        }
+      })
+    })
+
+    if (!response.ok) {
+      throw new Error(`Backend API error: ${response.status}`)
+    }
+
+    const data = await response.json()
+
+    // Check if fallback was used
+    if (data.fallback) {
+      console.warn('Backend using fallback matching:', data.error)
+    }
+
+    return {
+      score: data.score,
+      reasoning: data.reasoning
+    }
+  } catch (error) {
+    console.error('Error calling backend AI matching:', error)
+    // Fallback to simple algorithm if backend is unavailable
+    return calculateMatchScore(student, lab)
+  }
 }

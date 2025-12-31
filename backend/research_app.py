@@ -10,6 +10,20 @@ import hashlib
 import uuid
 from datetime import datetime
 import os
+from typing import List, Dict, Any
+
+# Import AI matching algorithms
+try:
+    from models import (
+        Candidate, Lab, MatchResult, Transcript, Course,
+        ResearchExperience, ExperienceLevel
+    )
+    from lab_ats_algorithm import LabATSAlgorithm
+    from nlp_utils import SimpleEmbedding, TextProcessor
+    AI_MATCHING_ENABLED = True
+except ImportError as e:
+    print(f"⚠️  AI matching algorithms not available: {e}")
+    AI_MATCHING_ENABLED = False
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for frontend communication
@@ -458,12 +472,245 @@ def health_check():
         'timestamp': datetime.now().isoformat()
     }), 200
 
+# ==================== AI Matching Helper Functions ====================
+
+def convert_to_candidate_model(application_data: Dict[str, Any]) -> Candidate:
+    """Convert simple application data to AI algorithm's Candidate model"""
+
+    # Create transcript with courses if available
+    courses = []
+    if 'courses' in application_data:
+        for course in application_data['courses']:
+            courses.append(Course(
+                name=course.get('name', ''),
+                grade_points=float(course.get('grade', 3.0)),
+                credits=int(course.get('credits', 4))
+            ))
+
+    transcript = Transcript(
+        university=application_data.get('university', 'UCLA'),
+        major=application_data.get('major', ''),
+        gpa=float(application_data.get('gpa', 3.0)),
+        courses=courses
+    )
+
+    # Create research experiences if available
+    research_exps = []
+    if 'researchExperiences' in application_data:
+        for exp in application_data['researchExperiences']:
+            research_exps.append(ResearchExperience(
+                lab_name=exp.get('labName', ''),
+                description=exp.get('description', ''),
+                duration_months=int(exp.get('durationMonths', 6)),
+                hours_per_week=int(exp.get('hoursPerWeek', 10))
+            ))
+
+    # Create candidate
+    return Candidate(
+        id=application_data.get('id', str(uuid.uuid4())),
+        name=application_data.get('studentName', application_data.get('fullName', '')),
+        email=application_data.get('email', ''),
+        transcript=transcript,
+        personal_essay=application_data.get('coverLetter', application_data.get('bio', '')),
+        career_goals=[application_data.get('interests', '').split(',')[0]] if application_data.get('interests') else [],
+        skills=application_data.get('skills', '').split(',') if application_data.get('skills') else [],
+        research_experiences=research_exps,
+        experience_level=ExperienceLevel.BEGINNER  # Default for now
+    )
+
+def convert_to_lab_model(lab_data: Dict[str, Any]) -> Lab:
+    """Convert simple lab data to AI algorithm's Lab model"""
+
+    return Lab(
+        id=lab_data.get('id', str(uuid.uuid4())),
+        name=lab_data.get('name', lab_data.get('labName', '')),
+        pi_name=lab_data.get('pi_name', lab_data.get('piName', '')),
+        department=lab_data.get('department', ''),
+        description=lab_data.get('description', ''),
+        required_skills=lab_data.get('requirements', '').split(',') if lab_data.get('requirements') else [],
+        preferred_experience_level=ExperienceLevel.BEGINNER,  # Default
+        research_areas=lab_data.get('research_areas', '').split(',') if lab_data.get('research_areas') else []
+    )
+
+# ==================== AI Matching Endpoints ====================
+
+@app.route('/api/ai/match-score', methods=['POST'])
+def calculate_ai_match_score():
+    """
+    Calculate AI match score between a student and a lab
+
+    Request body:
+    {
+        "student": {
+            "studentName": "...",
+            "email": "...",
+            "major": "...",
+            "gpa": "3.8",
+            "skills": "Python, ML, Data Analysis",
+            "coverLetter": "...",
+            ...
+        },
+        "lab": {
+            "name": "...",
+            "department": "...",
+            "description": "...",
+            "requirements": "...",
+            ...
+        }
+    }
+
+    Returns:
+    {
+        "score": 85,
+        "reasoning": "Strong match: ...",
+        "tier": "high_priority",
+        "strengths": [...],
+        "gaps": [...]
+    }
+    """
+    if not AI_MATCHING_ENABLED:
+        return jsonify({
+            'error': 'AI matching not available',
+            'fallback': True,
+            'score': 75,
+            'reasoning': 'Using basic matching (AI modules not loaded)'
+        }), 200
+
+    try:
+        data = request.get_json()
+        student_data = data.get('student', {})
+        lab_data = data.get('lab', {})
+
+        if not student_data or not lab_data:
+            return jsonify({'error': 'Student and lab data required'}), 400
+
+        # Convert to AI model format
+        candidate = convert_to_candidate_model(student_data)
+        lab = convert_to_lab_model(lab_data)
+
+        # Initialize AI algorithm with embedding system
+        embedding_system = SimpleEmbedding()
+        ats = LabATSAlgorithm(embedding_system)
+
+        # Calculate match score
+        result = ats.score_candidate(candidate, lab)
+
+        # Return results
+        return jsonify({
+            'score': int(result.total_score),
+            'reasoning': result.explanation,
+            'tier': result.tier.value if hasattr(result.tier, 'value') else str(result.tier),
+            'strengths': result.strengths,
+            'gaps': result.gaps,
+            'breakdown': {
+                component.name: {
+                    'score': component.score,
+                    'reasoning': component.reasoning
+                }
+                for component in result.score_components
+            } if hasattr(result, 'score_components') else {}
+        }), 200
+
+    except Exception as e:
+        print(f"Error in AI matching: {e}")
+        import traceback
+        traceback.print_exc()
+
+        # Return fallback simple score
+        return jsonify({
+            'error': str(e),
+            'fallback': True,
+            'score': 70,
+            'reasoning': 'Error occurred, using fallback matching'
+        }), 200
+
+@app.route('/api/ai/batch-match', methods=['POST'])
+def batch_match_candidates():
+    """
+    Calculate match scores for multiple candidates against a single lab
+
+    Request body:
+    {
+        "lab": { ... },
+        "candidates": [ { ... }, { ... }, ... ]
+    }
+
+    Returns:
+    {
+        "matches": [
+            {
+                "candidateId": "...",
+                "candidateName": "...",
+                "score": 85,
+                "reasoning": "...",
+                "tier": "high_priority"
+            },
+            ...
+        ]
+    }
+    """
+    if not AI_MATCHING_ENABLED:
+        return jsonify({
+            'error': 'AI matching not available'
+        }), 503
+
+    try:
+        data = request.get_json()
+        lab_data = data.get('lab', {})
+        candidates_data = data.get('candidates', [])
+
+        if not lab_data or not candidates_data:
+            return jsonify({'error': 'Lab and candidates data required'}), 400
+
+        # Convert lab to model
+        lab = convert_to_lab_model(lab_data)
+
+        # Initialize AI algorithm
+        embedding_system = SimpleEmbedding()
+        ats = LabATSAlgorithm(embedding_system)
+
+        # Calculate scores for all candidates
+        matches = []
+        for candidate_data in candidates_data:
+            try:
+                candidate = convert_to_candidate_model(candidate_data)
+                result = ats.score_candidate(candidate, lab)
+
+                matches.append({
+                    'candidateId': candidate.id,
+                    'candidateName': candidate.name,
+                    'candidateEmail': candidate.email,
+                    'score': int(result.total_score),
+                    'reasoning': result.explanation,
+                    'tier': result.tier.value if hasattr(result.tier, 'value') else str(result.tier),
+                    'strengths': result.strengths,
+                    'gaps': result.gaps
+                })
+            except Exception as e:
+                print(f"Error scoring candidate {candidate_data.get('id', 'unknown')}: {e}")
+                continue
+
+        # Sort by score descending
+        matches.sort(key=lambda x: x['score'], reverse=True)
+
+        return jsonify({
+            'matches': matches,
+            'totalProcessed': len(matches)
+        }), 200
+
+    except Exception as e:
+        print(f"Error in batch matching: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/', methods=['GET'])
 def index():
     """Root endpoint"""
     return jsonify({
         'service': 'Catalyst Research Lab Matching Platform',
         'version': '1.0.0',
+        'aiMatching': AI_MATCHING_ENABLED,
         'endpoints': {
             'auth': {
                 'signup': 'POST /api/auth/signup',
@@ -477,6 +724,10 @@ def index():
             },
             'applications': {
                 'list': 'GET /api/applications/<student_id>'
+            },
+            'ai': {
+                'matchScore': 'POST /api/ai/match-score',
+                'batchMatch': 'POST /api/ai/batch-match'
             }
         }
     }), 200
