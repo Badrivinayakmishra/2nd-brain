@@ -142,27 +142,10 @@ export default function ProfessorDashboard() {
               fontWeight: 400,
               border: 'none',
               textAlign: 'left',
-              cursor: 'pointer',
-              marginBottom: '4px'
-            }}
-          >
-            Applications
-          </button>
-          <button
-            onClick={() => router.push('/profile')}
-            style={{
-              padding: '12px 24px',
-              backgroundColor: 'transparent',
-              color: '#000000',
-              fontFamily: '"Work Sans", sans-serif',
-              fontSize: '15px',
-              fontWeight: 400,
-              border: 'none',
-              textAlign: 'left',
               cursor: 'pointer'
             }}
           >
-            Profile
+            Applications
           </button>
         </nav>
 
