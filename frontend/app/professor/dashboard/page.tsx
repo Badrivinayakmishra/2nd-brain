@@ -99,6 +99,7 @@ export default function ProfessorDashboard() {
         {/* Navigation */}
         <nav style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
           <button
+            onClick={() => router.push('/professor/dashboard')}
             style={{
               padding: '12px 24px',
               backgroundColor: '#C4A574',

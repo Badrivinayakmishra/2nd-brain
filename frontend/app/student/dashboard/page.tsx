@@ -189,6 +189,7 @@ export default function StudentDashboard() {
         {/* Navigation */}
         <nav style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
           <button
+            onClick={() => router.push('/student/dashboard')}
             style={{
               padding: '12px 24px',
               backgroundColor: '#C4A574',
