@@ -14,9 +14,12 @@ from premium_powerpoint_generator import PremiumPowerPointGenerator
 app = Flask(__name__)
 CORS(app)  # Enable CORS for frontend requests
 
-# Initialize systems
-OPENAI_KEY = "REDACTED_OPENAI_KEY"
-PINECONE_KEY = "REDACTED_PINECONE_KEY"
+# Initialize systems - load from environment variables
+from dotenv import load_dotenv
+load_dotenv()
+
+OPENAI_KEY = os.getenv("OPENAI_API_KEY", "")
+PINECONE_KEY = os.getenv("PINECONE_API_KEY", "")
 
 # Initialize chatbot (will be done on first use to save startup time)
 chatbot = None
